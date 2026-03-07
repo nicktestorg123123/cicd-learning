@@ -1,0 +1,26 @@
+name: 03 - Safe Fork Checkout (pull_request)
+
+on:
+  # 🛡️ 変更点1：トリガーを通常の pull_request に変更
+  pull_request:
+    types: [opened, synchronize]
+
+# 💡 ポイント：わざと強い権限を要求しています
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build-untrusted-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR Code
+        uses: actions/checkout@v4
+        # 🛡️ 変更点2：pull_requestトリガーの場合、デフォルトでPRのコードが
+        # 安全にチェックアウトされるため、危険な `ref:` 指定は不要です。
+
+      - name: Run untrusted build script
+        # 💡 フォーク側の悪意のある package.json 自体は実行されますが...？
+        run: |
+          echo "Running untrusted code..."
+          npm install || echo "No package.json found."
