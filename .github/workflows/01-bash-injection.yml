@@ -1,0 +1,14 @@
+name: 01 - Vulnerable Bash Injection
+
+on:
+  pull_request_target:
+    types: [opened, edited, synchronize]
+
+jobs:
+  echo-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print PR Title (Vulnerable)
+        # ⚠️ 意図的な脆弱性: ユーザー入力がシェルに直接展開される
+        run: |
+          echo "PR Title is: ${{ github.event.pull_request.title }}"
