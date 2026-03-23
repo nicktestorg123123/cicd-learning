@@ -42,7 +42,16 @@ jobs:
         run: printenv
   
   envcheck:
-      runs-on: ubuntu-latest
-      steps:
-      - name: env settings
-        run: printenv
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR Head (Vulnerable)
+        uses: actions/checkout@v4
+        with:
+          # ⚠️ 意図的な脆弱性: フォークされた信頼できないコードをチェックアウトする
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Run untrusted build script
+        # ⚠️ 意図的な脆弱性: チェックアウトしたディレクトリ内のスクリプトを実行してしまう
+        run: |
+          echo "Running untrusted code..."
+          npm install || echo "No package.json found, but this step is still conceptually vulnerable."
