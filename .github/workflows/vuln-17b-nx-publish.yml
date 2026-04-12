@@ -1,0 +1,27 @@
+# Vuln-17b: nx 侵害パターン - workflow_dispatch のリリースワークフロー
+# 脆弱性: environment 未設定の workflow_dispatch で、任意ブランチから secrets にアクセス可能。
+# 検知想定: OpenSSF Scorecard, zizmor
+
+name: "Vuln-17b: nx-style Publish Workflow"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+      - run: npm ci
+      - run: ./scripts/publish.sh
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

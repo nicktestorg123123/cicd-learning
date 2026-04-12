@@ -1,0 +1,32 @@
+# Vuln-06: 過剰な permissions 設定
+# 脆弱性: 必要以上に広い write 権限を設定。CI で必要なのは contents: read のみ。
+# 検知想定: zizmor (excessive-permissions), OpenSSF Scorecard (Token-Permissions)
+
+name: "Vuln-06: Excessive Permissions"
+
+permissions:
+  contents: write
+  packages: write
+  issues: write
+  pull-requests: write
+  actions: write
+  security-events: write
+  statuses: write
+  deployments: write
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm test

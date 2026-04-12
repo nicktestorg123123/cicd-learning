@@ -1,0 +1,29 @@
+# Vuln-05: permissions 未設定 (デフォルト権限の使用)
+# 脆弱性: permissions を明示していないため、GITHUB_TOKEN にデフォルト権限が付与される。
+#          2023年2月以前のリポジトリでは contents: write を含む広範な書き込み権限。
+# 検知想定: zizmor (excessive-permissions), OpenSSF Scorecard (Token-Permissions)
+
+name: "Vuln-05: No Permissions Declared"
+
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install
+      - run: npm run build
+      - run: npm test
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm run deploy
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

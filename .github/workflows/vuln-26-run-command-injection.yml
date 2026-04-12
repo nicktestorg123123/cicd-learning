@@ -1,0 +1,42 @@
+# Vuln-26: さまざまな形でのコマンドインジェクション
+# 脆弱性: 外部コンテキストが eval, curl, SQL, ファイルパスなどに注入される。
+# 検知想定: CodeQL (actions/command-injection), zizmor (expression-injection)
+
+name: "Vuln-26: Various Command Injection Patterns"
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Eval injection
+        run: eval "echo ${{ github.event.issue.title }}"
+
+      - name: Curl injection
+        run: curl -o /dev/null "https://api.example.com/hook?title=${{ github.event.issue.title }}"
+
+      - name: File path injection
+        run: cat "reports/${{ github.event.pull_request.head.ref }}/result.txt"
+
+      - name: JSON injection
+        run: |
+          echo '{"title": "${{ github.event.issue.title }}"}' > payload.json
+          curl -X POST -d @payload.json https://api.example.com/webhook
+
+      - name: SQL-like injection in script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "${{ github.event.issue.title }}";
+            console.log(`Processing: ${title}`);

@@ -1,0 +1,39 @@
+# Vuln-08: 信頼できない artifact を未検証で使用
+# 脆弱性: workflow_run で取得した artifact を検証せずに展開し、
+#          checkout 済みのスクリプトを上書きされる可能性がある。
+# 検知想定: zizmor (artipacked), CodeQL (actions/untrusted-artifact)
+
+name: "Vuln-08: Untrusted Artifact Usage"
+
+on:
+  workflow_run:
+    workflows: ["PR Tests"]
+    types: [completed]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout trusted code
+        uses: actions/checkout@v4
+
+      # path 未指定: カレントディレクトリに展開され、checkout 済みファイルが上書きされる
+      - name: Download artifact without path
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Set permission and run
+        run: chmod +x ./scripts/deploy.sh
+
+      - name: Deploy with secrets
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          RESULT=$(cat build-results/output.txt)
+          ./scripts/deploy.sh "$RESULT"

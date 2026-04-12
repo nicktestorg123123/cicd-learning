@@ -1,0 +1,52 @@
+# Vuln-07: 外部 Action をタグで指定 (サプライチェーン攻撃リスク)
+# 脆弱性: 全ての外部 Action をタグで参照しており、タグ付け替えで悪意あるコードが実行される。
+#          tj-actions や trivy-action の侵害で実際に悪用された手法。
+# 検知想定: zizmor (unpinned-uses), OpenSSF Scorecard (Pinned-Dependencies)
+
+name: "Vuln-07: Unpinned Action Tags"
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      - run: npm ci
+      - run: npm test
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+      - uses: github/codeql-action/analyze@v3
+
+  deploy:
+    needs: [build, security]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/deploy
+          aws-region: ap-northeast-1
+      - uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: myapp:latest

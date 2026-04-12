@@ -1,0 +1,30 @@
+# Vuln-10: AI エージェントへの過剰な権限付与
+# 脆弱性: allowed_non_write_users: "*" で誰でも AI エージェントをトリガー可能。
+#          Bash を無制限に許可しており、prompt injection で任意コード実行可能。
+#          cline 侵害事例と同様のパターン。
+# 検知想定: zizmor, CodeQL (手動レビュー推奨)
+
+name: "Vuln-10: Excessive AI Agent Permissions"
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+jobs:
+  ai-triage:
+    runs-on: ubuntu-latest
+    # permissions 未設定 = デフォルト権限
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run AI Agent
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_non_write_users: "*"
+          allowed_bots: "*"
+          claude_args: "--allowedTools Bash WebFetch Read Write Edit"
+          model: claude-sonnet-4-20250514
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}

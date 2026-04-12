@@ -1,0 +1,21 @@
+# Reusable workflow stub (vuln-09 から呼び出される)
+name: "Reusable: Deploy"
+
+on:
+  workflow_call:
+    secrets:
+      DEPLOY_TOKEN:
+        required: false
+      AWS_ACCESS_KEY_ID:
+        required: false
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}

@@ -1,0 +1,43 @@
+# Vuln-16: Ultralytics 侵害パターンの再現
+# 脆弱性の組み合わせ:
+#   - pull_request_target で信頼できない PR を checkout
+#   - 外部コンテキストを run で直接展開 (Script Injection)
+#   - permissions 未設定 (デフォルト権限 = 広い書き込み権限)
+#   - 外部 Action をタグで指定
+# 検知想定: zizmor, CodeQL, OpenSSF Scorecard (複数ルール)
+
+name: "Vuln-16: Ultralytics-style Combined Vulnerability"
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Print PR info
+        run: |
+          echo "Testing PR: ${{ github.event.pull_request.title }}"
+          echo "Branch: ${{ github.event.pull_request.head.ref }}"
+          echo "Author: ${{ github.event.pull_request.user.login }}"
+
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/
+
+      - name: Publish package
+        if: github.event.pull_request.merged == true
+        run: |
+          python -m build
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}

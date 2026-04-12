@@ -1,0 +1,38 @@
+# Vuln-15: workflow_run トリガーで PR コンテキストを安全でない方法で使用
+# 脆弱性: workflow_run はデフォルトブランチのコンテキストで動作し強い権限を持つ。
+#          トリガー元の PR 情報を artifact 経由で受け取り、未検証で使用している。
+# 検知想定: zizmor (dangerous-triggers), CodeQL
+
+name: "Vuln-15: Workflow Run Injection"
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.event == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download PR info artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pr-info
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Post comment with PR number
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const prNumber = fs.readFileSync('pr-number.txt', 'utf8').trim();
+            const result = fs.readFileSync('test-result.txt', 'utf8');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(prNumber),
+              body: `Test Results:\n${result}`
+            });

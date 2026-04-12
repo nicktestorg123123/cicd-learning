@@ -1,0 +1,33 @@
+# Vuln-19: GITHUB_OUTPUT / GITHUB_ENV へのインジェクション
+# 脆弱性: 外部コンテキストを検証せずに GITHUB_OUTPUT や GITHUB_ENV に書き込み。
+#          デリミタ構文を使用していないため、値の注入が可能。
+# 検知想定: CodeQL (actions/envvar-injection), zizmor
+
+name: "Vuln-19: GITHUB_OUTPUT / GITHUB_ENV Injection"
+
+on:
+  pull_request_target:
+    types: [opened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set output from PR title
+        id: pr-info
+        run: |
+          echo "title=${{ github.event.pull_request.title }}" >> "$GITHUB_OUTPUT"
+          echo "branch=${{ github.event.pull_request.head.ref }}" >> "$GITHUB_OUTPUT"
+
+      - name: Set env from PR body
+        run: |
+          echo "PR_BODY=${{ github.event.pull_request.body }}" >> "$GITHUB_ENV"
+
+      - name: Use outputs
+        run: |
+          echo "Title: ${{ steps.pr-info.outputs.title }}"
+          echo "Body: $PR_BODY"

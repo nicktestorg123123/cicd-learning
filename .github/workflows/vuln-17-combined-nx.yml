@@ -1,0 +1,35 @@
+# Vuln-17: nx 侵害パターンの再現
+# 脆弱性の組み合わせ:
+#   - pull_request_target で Script Injection
+#   - permissions 未設定で GITHUB_TOKEN に contents: write
+#   - workflow_dispatch が有効な publish ワークフロー (Environment 未設定)
+#   - npm token を secrets に直接保存
+# 検知想定: zizmor, CodeQL, OpenSSF Scorecard (複数ルール)
+
+name: "Vuln-17: nx-style PR Target Injection"
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate PR
+        run: |
+          echo "Validating: ${{ github.event.pull_request.title }}"
+          npm install
+          npm run validate
+
+      - name: Post status
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -d '{"state":"success","context":"validation"}'

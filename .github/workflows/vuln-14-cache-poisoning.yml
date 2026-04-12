@@ -1,0 +1,43 @@
+# Vuln-14: キャッシュポイズニングのリスクがある構成
+# 脆弱性: secrets やデプロイトークンを扱うリリースワークフローでキャッシュを使用。
+#          キャッシュは権限の低いワークフローからも書き込み可能なため、
+#          攻撃者がキャッシュを汚染してリリースワークフローを侵害できる。
+#          cline 侵害で実際に悪用されたパターン。
+# 検知想定: zizmor, 手動レビュー
+
+name: "Vuln-14: Cache Poisoning Risk"
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # キャッシュを secrets を扱うワークフローで使用
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}

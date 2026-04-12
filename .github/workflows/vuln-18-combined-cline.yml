@@ -1,0 +1,37 @@
+# Vuln-18: cline 侵害パターンの再現
+# 脆弱性の組み合わせ:
+#   - issues トリガーで AI エージェントを起動
+#   - allowed_non_write_users: "*" で誰でもトリガー可能
+#   - Bash を無制限に許可 → prompt injection で任意コード実行
+#   - キャッシュを使用 → キャッシュポイズニングでリリースワークフローにピボット
+# 検知想定: zizmor, CodeQL (複数ルール)
+
+name: "Vuln-18: cline-style AI Agent Attack"
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+jobs:
+  ai-respond:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/package-lock.json') }}
+
+      - name: AI Agent with excessive permissions
+        uses: anthropics/claude-code-action@v1
+        with:
+          allowed_non_write_users: "*"
+          allowed_bots: "*"
+          claude_args: "--allowedTools Bash WebFetch Read Write Edit"
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}

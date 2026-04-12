@@ -1,0 +1,29 @@
+# Vuln-04: コメント本文を直接 run / github-script で展開 (Script Injection)
+# 脆弱性: issue_comment.body を run と actions/github-script の script で直接参照。
+# 検知想定: zizmor (expression-injection), CodeQL (actions/command-injection)
+
+name: "Vuln-04: Script Injection via Comment"
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  respond:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo comment
+        run: |
+          echo "Comment: ${{ github.event.comment.body }}"
+
+      - name: Use in github-script
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = `${{ github.event.comment.body }}`;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Received: ${body}`
+            });

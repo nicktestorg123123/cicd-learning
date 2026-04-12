@@ -1,0 +1,26 @@
+# Vuln-23: 外部リポジトリの再利用可能ワークフローをタグで参照
+# 脆弱性: 外部の Reusable Workflow をタグで指定しており、タグ改竄リスクがある。
+#          さらに secrets: inherit で全 secrets を渡している。
+# 検知想定: zizmor (unpinned-uses, secrets-inherit), OpenSSF Scorecard
+
+name: "Vuln-23: External Reusable Workflow with Tag"
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+
+jobs:
+  ci:
+    uses: shared-org/ci-workflows/.github/workflows/node-ci.yml@v2
+    secrets: inherit
+
+  security-scan:
+    uses: shared-org/ci-workflows/.github/workflows/security-scan.yml@v1
+    secrets: inherit
+
+  deploy:
+    needs: [ci, security-scan]
+    uses: shared-org/ci-workflows/.github/workflows/deploy.yml@main
+    secrets: inherit

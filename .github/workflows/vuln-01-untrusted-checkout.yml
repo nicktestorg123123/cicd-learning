@@ -1,0 +1,18 @@
+# Vuln-01: pull_request_target で信頼できない PR の checkout
+# 脆弱性: pull_request_target トリガーで PR 送信者のコードを checkout し、
+#          npm install を実行している。攻撃者は preinstall スクリプトで任意コード実行可能。
+# 検知想定: zizmor (dangerous-triggers), CodeQL (actions/dangerous-checkout)
+
+name: "Vuln-01: Untrusted PR Checkout"
+
+on: pull_request_target
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: npm install
+      - run: npm test

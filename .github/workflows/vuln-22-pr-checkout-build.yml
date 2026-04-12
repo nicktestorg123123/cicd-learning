@@ -1,0 +1,35 @@
+# Vuln-22: pull_request トリガーで checkout 後にビルドツールを実行
+# 脆弱性: pull_request は権限が限定されているが、checkout したコードから
+#          Makefile, Gradle, setup.py 等を通じた間接的なコード実行が可能。
+#          LOTP (Living Off the Pipeline) の手法。
+#          キャッシュポイズニングへの起点にもなりうる。
+# 検知想定: zizmor (dangerous-triggers + cache), 手動レビュー
+
+name: "Vuln-22: PR Checkout with Build Tool Execution"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/pip
+            ~/.gradle
+          key: ${{ runner.os }}-build-${{ hashFiles('**/*.lock', '**/package-lock.json') }}
+
+      # 以下はすべて checkout されたコードに含まれるファイルを実行する
+      - run: npm install
+      - run: make build
+      - run: pip install -e .
+      - run: ./gradlew test

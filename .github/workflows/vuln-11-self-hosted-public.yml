@@ -1,0 +1,32 @@
+# Vuln-11: パブリックリポジトリでセルフホストランナーを使用
+# 脆弱性: パブリックリポジトリの pull_request トリガーでセルフホストランナーを使用。
+#          攻撃者は fork から PR を送り、セルフホストランナー上で任意コード実行可能。
+#          セルフホストランナーが社内ネットワーク上の場合、内部サービスにアクセスされるリスク。
+# 検知想定: zizmor (self-hosted-runner), OpenSSF Scorecard
+
+name: "Vuln-11: Self-Hosted Runner on Public Repo"
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm install
+      - run: npm test
+
+  integration-test:
+    runs-on: [self-hosted, linux, x64]
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/integration-test.sh
+        env:
+          INTERNAL_API_URL: http://internal-api.corp.local:8080

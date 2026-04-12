@@ -1,0 +1,39 @@
+# Vuln-21: Discussion / Label / Milestone 等のコンテキストによる Script Injection
+# 脆弱性: あまり注目されないイベントソースからの Script Injection。
+# 検知想定: zizmor (expression-injection), CodeQL (actions/command-injection)
+
+name: "Vuln-21: Script Injection via Various Contexts"
+
+on:
+  discussion:
+    types: [created]
+  label:
+    types: [created]
+  milestone:
+    types: [created]
+
+jobs:
+  log-events:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Log discussion title
+        if: github.event_name == 'discussion'
+        run: |
+          echo "New discussion: ${{ github.event.discussion.title }}"
+
+      - name: Log discussion body
+        if: github.event_name == 'discussion'
+        run: |
+          echo "Body: ${{ github.event.discussion.body }}"
+
+      - name: Log label
+        if: github.event_name == 'label'
+        run: |
+          echo "Label: ${{ github.event.label.name }}"
+
+      - name: Log milestone
+        if: github.event_name == 'milestone'
+        run: |
+          echo "Milestone: ${{ github.event.milestone.title }}"

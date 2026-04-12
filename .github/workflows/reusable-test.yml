@@ -1,0 +1,13 @@
+# Reusable workflow stub (vuln-09 から呼び出される)
+name: "Reusable: Test"
+
+on:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test

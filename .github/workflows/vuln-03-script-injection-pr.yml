@@ -1,0 +1,37 @@
+# Vuln-03: PR 関連コンテキストを直接 run フィールドで展開 (Script Injection)
+# 脆弱性: PR タイトル、ブランチ名、コミットメッセージ、PR body を直接参照している。
+#          いずれも外部ユーザーが制御可能なコンテキスト。
+# 検知想定: zizmor (expression-injection), CodeQL (actions/command-injection)
+
+name: "Vuln-03: Script Injection via PR Contexts"
+
+on:
+  pull_request_target:
+    types: [opened, synchronize]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print PR title
+        run: |
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+
+      - name: Print branch name
+        run: |
+          echo "Branch: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Print PR body
+        run: |
+          echo "Body: ${{ github.event.pull_request.body }}"
+
+      - name: Print commit message
+        run: |
+          echo "Commit: ${{ github.event.head_commit.message }}"
+
+      - name: Use in conditional
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if [[ "$TITLE" == *"fix"* ]]; then
+            echo "This is a fix PR"
+          fi

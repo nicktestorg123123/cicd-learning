@@ -1,0 +1,32 @@
+# Vuln-20: OIDC の検証条件が甘い設定の参考例
+# 脆弱性: OIDC を使用しているが、sub クレームの検証がワイルドカードで甘い。
+#          Organization 内の任意リポジトリからロールを引き受け可能。
+#          ※ これはクラウド側の設定だが、ワークフロー側でも environment 未設定で問題がある。
+# 検知想定: OpenSSF Scorecard, 手動レビュー
+
+name: "Vuln-20: Weak OIDC Configuration"
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # environment 未設定: OIDC の sub クレームに environment が含まれない
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # クラウド側で repo:my-org/* のワイルドカード許可を想定
+          role-to-assume: arn:aws:iam::123456789012:role/deploy-wide
+          aws-region: ap-northeast-1
+
+      - run: aws s3 sync ./dist s3://production-bucket/
+      - run: aws cloudfront create-invalidation --distribution-id EXAMPLE --paths "/*"
