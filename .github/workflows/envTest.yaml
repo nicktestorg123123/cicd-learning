@@ -1,0 +1,26 @@
+name: Environment Variable Check
+
+on:
+  workflow_dispatch:
+    inputs:
+      debug_mode:
+        description: 'Debug mode'
+        required: false
+        default: 'false'
+
+jobs:
+  check-env:
+    runs-on: ubuntu-latest
+    env:
+      JOB_LEVEL_VAR: "I am from Job level"
+
+    steps:
+      - name: Set Step-level ENV and Echo Title
+        env:
+          STEP_LEVEL_VAR: "I am from Step 1"
+        run: |
+          echo "Step 1: Specific variables"
+
+      - name: Print All Env (Check scope)
+        run: |
+          printenv | grep -E "JOB_LEVEL_VAR|STEP_LEVEL_VAR"
