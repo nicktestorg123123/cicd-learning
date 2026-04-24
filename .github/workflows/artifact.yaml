@@ -1,0 +1,37 @@
+name: "Vulnerable Workflow"
+
+on:
+  workflow_run:
+    workflows: ["Test Run"]
+    types: [completed]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted code
+        uses: actions/checkout@v4
+
+      - name: before
+        run: cat ./script/deploy.sh
+      
+      
+      - name: Download Artifact from PR workflow
+        uses: actions/download-artifact@v4
+        with:
+          name: test-data 
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Set permission
+        run: chmod +x ./script/deploy.sh
+
+      - name: Deploy with powerful Secret
+        env:
+          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: |
+          echo "Processing data from artifact..."
+          RESULT_DATA=$(cat test-results/result.txt)
+          ls -la
+          ls -la ./script
+          ls -la test-results/
+          ./script/deploy.sh "$RESULT_DATA"
